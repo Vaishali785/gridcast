@@ -1,0 +1,19 @@
+# Render Blueprint (not yet deployed). Create a Blueprint from this repo in the Render dashboard.
+services:
+  - type: web
+    name: gridcast-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    envVars:
+      - { key: DATA_SOURCE, value: live }
+      - { key: CORS_ORIGINS, value: https://gridcast-web.onrender.com }
+    disk: { name: gridcast-data, mountPath: /data, sizeGB: 1 }
+  - type: web
+    name: gridcast-web
+    runtime: docker
+    dockerfilePath: ./frontend/Dockerfile
+    dockerContext: .
+    envVars:
+      - { key: BACKEND_HOST, fromService: { type: web, name: gridcast-api, property: hostport } }

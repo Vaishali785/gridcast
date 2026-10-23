@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body { @apply bg-paper text-ink font-sans antialiased; font-feature-settings: "tnum"; }
+  h1, h2, h3 { @apply font-serif; }
+}
+@layer components {
+  .card { @apply bg-surface border border-line rounded-md; }
+  .label { @apply text-[11px] uppercase tracking-wider text-muted font-medium; }
+  .btn { @apply inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded border border-line bg-surface hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-wind disabled:opacity-50; }
+  .btn-primary { @apply bg-ink text-white border-ink hover:bg-ink/90; }
+  .skeleton { @apply animate-pulse bg-line/70 rounded; }
+}

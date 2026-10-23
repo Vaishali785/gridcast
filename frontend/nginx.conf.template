@@ -1,0 +1,15 @@
+server {
+  listen 80;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  location = /healthz { access_log off; return 200 "ok"; }
+
+  location /api/ {
+    proxy_pass http://${BACKEND_HOST};
+    proxy_read_timeout 180s;   # a live refresh can take a while
+    proxy_set_header Host $host;
+  }
+
+  location / { try_files $uri /index.html; }
+}
