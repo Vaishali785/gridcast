@@ -1,4 +1,5 @@
 """Request/response schemas (rendered in the OpenAPI docs at /docs)."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -50,7 +51,9 @@ class Coverage(BaseModel):
 class MetadataResponse(BaseModel):
     data_loaded: bool
     data_source: Literal["live", "fixture"]
-    is_sample_data: bool = Field(description="True when the data comes from labelled sample fixtures.")
+    is_sample_data: bool = Field(
+        description="True when the data comes from labelled sample fixtures."
+    )
     last_successful_refresh: datetime | None
     window_start: date
     window_end: date
@@ -66,11 +69,15 @@ class IntervalRow(BaseModel):
     settlement_period: int
     forecast_mw: float | None
     actual_mw: float | None
-    error_mw: float | None = Field(description="forecast - actual (MW). Positive = over-forecast.")
+    error_mw: float | None = Field(
+        description="forecast - actual (MW). Positive = over-forecast."
+    )
     abs_error_mw: float | None
     forecast_publish_time: datetime | None
     cutoff_time: datetime
-    lookahead: bool = Field(description="True if the selected forecast was published AFTER this interval's decision cutoff.")
+    lookahead: bool = Field(
+        description="True if the selected forecast was published AFTER this interval's decision cutoff."
+    )
     n_vintages_eligible: int
     actual_publish_time: datetime | None
 
@@ -83,6 +90,10 @@ class Summary(BaseModel):
     n_missing_actual: int
     n_missing_both: int
     n_lookahead_intervals: int
+    n_forecast_from_hourly: int = Field(
+        0,
+        description="Half-hours served by applying an hourly WINDFOR value to both halves of its hour.",
+    )
     forecast_mean_mw: float | None
     forecast_peak_mw: float | None
     actual_mean_mw: float | None
@@ -97,7 +108,9 @@ class MetricsOut(BaseModel):
     mae_mw: float | None
     rmse_mw: float | None
     bias_mw: float | None
-    bias_convention: str = "error = forecast - actual; bias > 0 means the forecast over-predicted wind."
+    bias_convention: str = (
+        "error = forecast - actual; bias > 0 means the forecast over-predicted wind."
+    )
 
 
 class HistogramBin(BaseModel):
@@ -111,7 +124,9 @@ class AnalysisResponse(BaseModel):
     end_date: date
     mode: Literal["cutoff", "latest", "vintage"]
     mode_label: str
-    is_retrospective: bool = Field(description="True when any selected forecast was published after its decision cutoff.")
+    is_retrospective: bool = Field(
+        description="True when any selected forecast was published after its decision cutoff."
+    )
     as_of: datetime | None
     cutoff: CutoffAssumption
     is_sample_data: bool
@@ -175,7 +190,9 @@ class VintageTimesResponse(BaseModel):
 
 
 class RefreshRequest(BaseModel):
-    source: Literal["live", "fixture"] | None = Field(default=None, description="Defaults to DATA_SOURCE.")
+    source: Literal["live", "fixture"] | None = Field(
+        default=None, description="Defaults to DATA_SOURCE."
+    )
 
 
 class RefreshResponse(BaseModel):
