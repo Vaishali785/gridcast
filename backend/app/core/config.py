@@ -1,4 +1,5 @@
 """Application settings, loaded from environment variables (see .env.example)."""
+
 from __future__ import annotations
 
 from datetime import date, time
@@ -36,13 +37,19 @@ class Settings(BaseSettings):
     decision_cutoff_timezone: str = "Europe/London"
     decision_cutoff_day_offset: int = -1
 
+    # WINDFOR is hourly, FUELHH half-hourly: apply each hourly forecast to both half-hours of its hour.
+    # Set false to pair only half-hours whose startTime exactly matches a forecast startTime.
+    expand_hourly_forecasts: bool = True
+
     cors_origins: str = "http://localhost:5173,http://localhost:8080"
 
     @field_validator("decision_cutoff_day_offset")
     @classmethod
     def _offset_not_positive(cls, v: int) -> int:
         if v > 0:
-            raise ValueError("decision_cutoff_day_offset must be <= 0 (cutoff is on or before delivery day)")
+            raise ValueError(
+                "decision_cutoff_day_offset must be <= 0 (cutoff is on or before delivery day)"
+            )
         return v
 
     @property
