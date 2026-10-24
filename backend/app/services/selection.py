@@ -1,4 +1,5 @@
 """Forecast-vintage selection: the heart of the "no look-ahead" guarantee."""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -23,12 +24,32 @@ def cutoff_series(start_times: pd.Series, rule: CutoffRule) -> pd.Series:
     return local_dates.map(cache).astype("datetime64[ns, UTC]")
 
 
+def _source_starts(
+    starts: pd.Series, forecast_starts: pd.Series, expand_hourly: bool
+) -> pd.Series:
+    """Forecast `startTime` that serves each delivery interval.
+
+    WINDFOR is published at HOURLY resolution while FUELHH actuals are half-hourly. A delivery
+    interval uses a forecast with exactly its own startTime when one exists. Otherwise, a :30
+    interval falls back to the forecast for the hour that contains it (the :00 start), so one hourly
+    forecast value is applied to both half-hours of its hour. Never invents values: if the hour has
+    no forecast the interval stays missing.
+    """
+    if not expand_hourly:
+        return starts
+    known = pd.Series(forecast_starts.unique())
+    hour = starts.dt.floor("h")
+    use_hour = ~starts.isin(known) & (starts != hour) & hour.isin(known)
+    return starts.where(~use_hour, hour)
+
+
 def select_forecasts(
     forecasts: pd.DataFrame,
     delivery_starts: pd.Series,
     mode: SelectionMode,
     rule: CutoffRule,
     as_of: pd.Timestamp | None = None,
+    expand_hourly: bool = True,
 ) -> pd.DataFrame:
     """Pick one forecast vintage per delivery interval.
 
@@ -40,21 +61,46 @@ def select_forecasts(
 
     Returns one row per delivery interval that HAS an eligible forecast, with columns:
     start_time, forecast_mw, forecast_publish_time, cutoff_time, lookahead (publish > cutoff),
-    n_vintages_eligible. Intervals with no eligible forecast are absent (i.e. missing, not zero).
+    n_vintages_eligible, from_hourly (True when an hourly forecast was applied to a :30 interval).
+    Intervals with no eligible forecast are absent (i.e. missing, not zero).
     """
-    columns = ["start_time", "forecast_mw", "forecast_publish_time", "cutoff_time", "lookahead", "n_vintages_eligible"]
+    columns = [
+        "start_time",
+        "forecast_mw",
+        "forecast_publish_time",
+        "cutoff_time",
+        "lookahead",
+        "n_vintages_eligible",
+        "from_hourly",
+    ]
     if mode is SelectionMode.VINTAGE:
         if as_of is None:
-            raise InvalidRequestError("mode 'vintage' requires 'as_of' (forecast publication timestamp)")
+            raise InvalidRequestError(
+                "mode 'vintage' requires 'as_of' (forecast publication timestamp)"
+            )
         if as_of.tzinfo is None:
-            raise InvalidRequestError("'as_of' must include a timezone offset, e.g. 2026-01-10T08:30:00Z")
+            raise InvalidRequestError(
+                "'as_of' must include a timezone offset, e.g. 2026-01-10T08:30:00Z"
+            )
 
     starts = pd.Series(delivery_starts.unique(), name="start_time")
     if forecasts.empty or starts.empty:
         return pd.DataFrame(columns=columns)
 
-    df = forecasts[forecasts["start_time"].isin(starts)].copy()
-    df["cutoff_time"] = cutoff_series(df["start_time"], rule) if not df.empty else pd.NaT
+    mapping = pd.DataFrame(
+        {
+            "start_time": starts,
+            "source_start": _source_starts(
+                starts, forecasts["start_time"], expand_hourly
+            ),
+        }
+    )
+    df = forecasts.rename(columns={"start_time": "source_start"}).merge(
+        mapping, on="source_start", how="inner"
+    )
+    if df.empty:
+        return pd.DataFrame(columns=columns)
+    df["cutoff_time"] = cutoff_series(df["start_time"], rule)
 
     if mode is SelectionMode.CUTOFF:
         limit = df["cutoff_time"]
@@ -68,7 +114,12 @@ def select_forecasts(
 
     df = df.sort_values(["start_time", "publish_time"])
     n_eligible = df.groupby("start_time")["publish_time"].transform("count")
-    chosen = df.assign(n_vintages_eligible=n_eligible).drop_duplicates("start_time", keep="last")
-    chosen = chosen.rename(columns={"generation": "forecast_mw", "publish_time": "forecast_publish_time"})
+    chosen = df.assign(n_vintages_eligible=n_eligible).drop_duplicates(
+        "start_time", keep="last"
+    )
+    chosen = chosen.rename(
+        columns={"generation": "forecast_mw", "publish_time": "forecast_publish_time"}
+    )
     chosen["lookahead"] = chosen["forecast_publish_time"] > chosen["cutoff_time"]
+    chosen["from_hourly"] = chosen["source_start"] != chosen["start_time"]
     return chosen[columns].reset_index(drop=True)
