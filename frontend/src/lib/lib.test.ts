@@ -27,7 +27,7 @@ describe("format", () => {
 	})
 	it("signs errors", () => {
 		expect(fmtSignedMW(120)).toBe("+120 MW")
-		expect(fmtSignedMW(-120)).toBe("−120 MW")
+		expect(fmtSignedMW(-120)).toBe("\u2212120 MW")
 		expect(fmtSignedMW(0)).toBe("0 MW")
 	})
 	it("shows energy in GWh", () => expect(fmtMWh(2500)).toBe("2.5 GWh"))

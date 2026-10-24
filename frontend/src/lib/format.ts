@@ -1,5 +1,8 @@
 const UK = "Europe/London"
 
+/** True minus sign (U+2212) written as an escape so it doesnt get mix with hyphen. */
+const MINUS = "\u2212"
+
 export const fmtMW = (v: number | null | undefined, digits = 0): string =>
 	v == null
 		? "—"
@@ -8,7 +11,7 @@ export const fmtMW = (v: number | null | undefined, digits = 0): string =>
 export const fmtSignedMW = (v: number | null | undefined, digits = 0): string =>
 	v == null
 		? "—"
-		: `${v > 0 ? "+" : v < 0 ? "-" : ""}${Math.abs(v).toLocaleString("en-GB", { maximumFractionDigits: digits, minimumFractionDigits: digits })} MW`
+		: `${v > 0 ? "+" : v < 0 ? MINUS : ""}${Math.abs(v).toLocaleString("en-GB", { maximumFractionDigits: digits, minimumFractionDigits: digits })} MW`
 
 export const fmtMWh = (v: number | null | undefined): string =>
 	v == null ? "—" : `${(v / 1000).toLocaleString("en-GB", { maximumFractionDigits: 1 })} GWh`
